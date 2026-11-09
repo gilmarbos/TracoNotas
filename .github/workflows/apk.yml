@@ -7,7 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -o TracoNotas.zip
+      - name: Descompactar projeto
+        run: |
+          unzip -o TracoNotas.zip -d src
+          DIR=$(dirname "$(find src -name settings.gradle.kts | head -1)")
+          echo "Projeto em: $DIR"
+          echo "DIR=$DIR" >> $GITHUB_ENV
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -15,9 +20,17 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - run: gradle assembleDebug --no-daemon
-        working-directory: TracoNotas
+      - name: Compilar APK
+        run: |
+          cd "$DIR"
+          gradle assembleDebug --no-daemon
+      - name: Procurar APK
+        run: |
+          mkdir -p saida
+          find . -name "*.apk" -not -path "./saida/*" -exec cp {} saida/ \;
+          ls -la saida
       - uses: actions/upload-artifact@v4
         with:
           name: TracoNotas-apk
-          path: TracoNotas/app/build/out
+          path: saida/*.apk
+          if-no-files-found: error
